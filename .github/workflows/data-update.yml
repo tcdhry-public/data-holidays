@@ -1,4 +1,5 @@
 # 祝日の元データを取得・変換し、data/ に変化があればコミットして、data/ を GitHub Pages に配置する。
+# あわせて keepalive ブランチに空のコミットを足し、定期実行が止まらないようにする。
 # 事前に、リポジトリの Settings › Pages で Source を「GitHub Actions」にしておく。
 name: data-update
 
@@ -41,6 +42,28 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: data
+
+  # 公開リポジトリは 60 日間活動がないと定期実行が止まるので、keepalive ブランチに空のコミットを足して活動にする。
+  # main の履歴を確認のコミットで埋めないよう、別のブランチにする
+  keepalive:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Push an empty commit to keepalive
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin keepalive > /dev/null; then
+            git fetch --depth=1 origin keepalive
+            git checkout -B keepalive FETCH_HEAD
+          else
+            git checkout --orphan keepalive
+            git rm -rf --quiet .
+          fi
+          git commit --allow-empty -m "keepalive"
+          git push origin keepalive
 
   deploy:
     needs: update
