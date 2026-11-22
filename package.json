@@ -1,0 +1,16 @@
+{
+  "name": "data-holidays",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "fetch": "node scripts/fetch.mjs",
+    "convert": "node scripts/convert.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "csv-parse": "7.0.3",
+    "ical.js": "2.2.1"
+  }
+}
