@@ -1,0 +1,56 @@
+# 祝日の元データを取得・変換し、data/ に変化があればコミットして、data/ を GitHub Pages に配置する。
+# 事前に、リポジトリの Settings › Pages で Source を「GitHub Actions」にしておく。
+name: data-update
+
+on:
+  schedule:
+    # 毎週月曜 0:17 UTC(9:17 JST)。毎時 0 分は混み合って遅れやすいので避ける
+    - cron: "17 0 * * 1"
+  workflow_dispatch:
+
+# 同時に 2 つ動かさない(コミットと配置が重ならないようにする)
+concurrency:
+  group: data-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run fetch
+      - run: npm run convert
+      - name: Commit data/ if changed
+        run: |
+          git add data
+          if git diff --cached --quiet; then
+            echo "data/ に変化なし"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "data: 祝日データを更新"
+          git push
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: data
+
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
